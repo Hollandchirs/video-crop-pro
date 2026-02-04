@@ -1,0 +1,5 @@
+# Video Crop Pro - robots.txt
+User-agent: *
+Allow: /
+
+Sitemap: https://videocrop.pro/sitemap.xml
