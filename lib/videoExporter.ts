@@ -15,7 +15,6 @@ let ffmpegLoadPromise: Promise<any> | null = null;
 
 /**
  * Load FFmpeg from CDN - only loads once
- * Using jsDelivr which has better CORS support for workers
  */
 async function getFFmpeg(): Promise<any> {
   if (FFmpegClass) return FFmpegClass;
@@ -26,7 +25,7 @@ async function getFFmpeg(): Promise<any> {
 
   ffmpegLoadPromise = (async () => {
     try {
-      // Use jsdelivr CDN - better CORS support for workers
+      // Use jsdelivr CDN
       // @ts-ignore - importing from URL
       const ffmpegModule = await import(/* webpackIgnore: true */ "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js");
       FFmpegClass = ffmpegModule.FFmpeg;
@@ -41,49 +40,10 @@ async function getFFmpeg(): Promise<any> {
 }
 
 /**
- * Get CDN base URL - using jsdelivr for better CORS support
+ * Get local file URL (served from public directory)
  */
-function getCDNBase(): string {
-  return "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm";
-}
-
-/**
- * Create inline worker blob URL with all dependencies
- * This avoids CORS issues by bundling everything inline
- */
-async function getInlineWorkerURL(): Promise<string> {
-  // Fetch all necessary files for the worker
-  const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm";
-
-  // Fetch worker dependencies
-  const [workerCode, constCode, errorsCode, utilCode] = await Promise.all([
-    fetch(`${baseURL}/worker.js`).then(r => r.text()),
-    fetch(`${baseURL}/const.js`).then(r => r.text()),
-    fetch(`${baseURL}/errors.js`).then(r => r.text()),
-    fetch(`${baseURL}/util.js`).then(r => r.text()),
-  ]);
-
-  // Create a blob that exports all the modules
-  const inlineCode = `
-    // Const module
-    ${constCode.replace(/export\s+const/g, 'const').replace(/export\s*\{/g, 'const {')};
-
-    // Errors module
-    ${errorsCode.replace(/export\s+const/g, 'const').replace(/export\s*\{/g, 'const {')};
-
-    // Util module
-    ${utilCode.replace(/export\s+const/g, 'const').replace(/export\s*\{/g, 'const {')};
-
-    // Worker code (modified to use local variables)
-    ${workerCode
-      .replace(/import\s+.*from\s+["']\.\/const\.js["'];/g, '')
-      .replace(/import\s+.*from\s+["']\.\/errors\.js["'];/g, '')
-      .replace(/import\s+.*from\s+["']@ffmpeg\/util["'];/g, '')
-    };
-  `;
-
-  const blob = new Blob([inlineCode], { type: "application/javascript" });
-  return URL.createObjectURL(blob);
+function getLocalURL(filename: string): string {
+  return `/ffmpeg/${filename}`;
 }
 
 /**
@@ -103,15 +63,12 @@ export async function exportVideo(
   // Create a new FFmpeg instance each time
   const ffmpeg = new FFmpeg();
 
-  // Load FFmpeg core files
-  const coreURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.js`, "text/javascript");
-  const wasmURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.wasm`, "application/wasm");
-
-  // Use inline worker to avoid CORS issues
+  // Load FFmpeg from local files (served from public directory)
+  // Using worker-bundle.js which has all dependencies inlined
   await ffmpeg.load({
-    coreURL,
-    wasmURL,
-    workerURL: await getInlineWorkerURL(),
+    coreURL: await toBlobURL(getLocalURL("ffmpeg-core.js"), "text/javascript"),
+    wasmURL: await toBlobURL(getLocalURL("ffmpeg-core.wasm"), "application/wasm"),
+    workerURL: await toBlobURL(getLocalURL("worker-bundle.js"), "text/javascript"),
   });
 
   // Write input file - read as Uint8Array to avoid blob URL issues
@@ -273,15 +230,12 @@ export async function exportVideoWithClips(
   // Create a new FFmpeg instance each time
   const ffmpeg = new FFmpeg();
 
-  // Load FFmpeg core files
-  const coreURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.js`, "text/javascript");
-  const wasmURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.wasm`, "application/wasm");
-
-  // Use inline worker to avoid CORS issues
+  // Load FFmpeg from local files (served from public directory)
+  // Using worker-bundle.js which has all dependencies inlined
   await ffmpeg.load({
-    coreURL,
-    wasmURL,
-    workerURL: await getInlineWorkerURL(),
+    coreURL: await toBlobURL(getLocalURL("ffmpeg-core.js"), "text/javascript"),
+    wasmURL: await toBlobURL(getLocalURL("ffmpeg-core.wasm"), "application/wasm"),
+    workerURL: await toBlobURL(getLocalURL("worker-bundle.js"), "text/javascript"),
   });
 
   // Write input file - read as Uint8Array to avoid blob URL issues
