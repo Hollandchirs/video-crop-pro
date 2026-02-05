@@ -22,8 +22,9 @@ export async function exportVideo(
     wasmURL: await toBlobURL("https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm", "application/wasm"),
   });
 
-  // Write input file
-  await ffmpeg.writeFile("input.mp4", await fetchFile(videoFile));
+  // Write input file - read as Uint8Array to avoid blob URL issues
+  const inputData = await readFileAsUint8Array(videoFile);
+  await ffmpeg.writeFile("input.mp4", inputData);
 
   let command: string[];
 
@@ -185,8 +186,9 @@ export async function exportVideoWithClips(
     wasmURL: await toBlobURL("https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm", "application/wasm"),
   });
 
-  // Write input file
-  await ffmpeg.writeFile("input.mp4", await fetchFile(videoFile));
+  // Write input file - read as Uint8Array to avoid blob URL issues
+  const inputData = await readFileAsUint8Array(videoFile);
+  await ffmpeg.writeFile("input.mp4", inputData);
 
   let command: string[];
 
@@ -354,4 +356,20 @@ async function importFFmpegModules() {
     fetchFile: utilModule.fetchFile,
     toBlobURL: utilModule.toBlobURL,
   };
+}
+
+/**
+ * Read file as Uint8Array for FFmpeg
+ * This avoids issues with blob URLs and fetchFile
+ */
+async function readFileAsUint8Array(file: File | Blob): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const arrayBuffer = reader.result as ArrayBuffer;
+      resolve(new Uint8Array(arrayBuffer));
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsArrayBuffer(file);
+  });
 }

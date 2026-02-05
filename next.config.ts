@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   generateEtags: false,
   outputFileTracingRoot: path.join(__dirname),
+  // Empty turbopack config to allow webpack config in Next.js 16
+  turbopack: {},
   headers: async () => {
     return [
       {
