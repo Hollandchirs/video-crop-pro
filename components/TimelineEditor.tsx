@@ -470,7 +470,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         className="relative cursor-pointer"
         onClick={handleTimelineClick}
       >
-        <div className="relative overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-800 dark:bg-neutral-900 h-16">
+        <div className="relative overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-100 h-16">
           {clips.map((clip, index) => {
             // Sort clips to determine if this is first or last
             const sortedClips = [...clips].sort((a, b) => a.startTime - b.startTime);
@@ -556,7 +556,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
 
           {/* Empty placeholder when no clips */}
           {clips.length === 0 && (
-            <div className="h-full w-full flex items-center justify-center text-xs text-neutral-400">
+            <div className="h-full w-full flex items-center justify-center text-xs text-neutral-500 dark:text-neutral-500">
               No clips generated yet
             </div>
           )}
@@ -594,11 +594,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           <div className="w-0.5 h-full bg-[#C2F159]" />
           <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#C2F159] rotate-45 rounded-sm" />
         </div>
-      </div>
-
-      {/* Instructions */}
-      <div className="text-[10px] text-neutral-400 text-center mt-2">
-        Click to seek • Click clip to select & edit • Drag to move • Drag edges to resize
       </div>
     </div>
   );

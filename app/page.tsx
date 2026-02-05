@@ -44,17 +44,34 @@ export default function HomePage() {
             >
               Video Crop Pro
             </button>
-            <button
-              onClick={handleExport}
-              disabled={!isExportReady || isExporting}
-              className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                isExportReady
-                  ? "bg-[#C2F159] text-neutral-900 shadow-md hover:shadow-lg hover:opacity-90"
-                  : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
-              }`}
-            >
-              {isExporting ? "Exporting..." : "Export"}
-            </button>
+            {showEditor ? (
+              <button
+                onClick={handleExport}
+                disabled={!isExportReady || isExporting}
+                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                  isExportReady
+                    ? "bg-[#C2F159] text-neutral-900 shadow-md hover:shadow-lg hover:opacity-90"
+                    : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
+                }`}
+              >
+                {isExporting ? "Exporting..." : "Export"}
+              </button>
+            ) : (
+              <div className="flex items-center gap-4">
+                <a
+                  href="#features"
+                  className="text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+                >
+                  Feature
+                </a>
+                <a
+                  href="#faq"
+                  className="text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+                >
+                  FAQ
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </header>
