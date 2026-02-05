@@ -48,15 +48,41 @@ function getCDNBase(): string {
 }
 
 /**
- * Create inline worker blob URL to avoid CORS issues
+ * Create inline worker blob URL with all dependencies
+ * This avoids CORS issues by bundling everything inline
  */
 async function getInlineWorkerURL(): Promise<string> {
-  // Fetch the worker code from CDN
-  const workerCode = await fetch("https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js");
-  const workerText = await workerCode.text();
+  // Fetch all necessary files for the worker
+  const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm";
 
-  // Create blob URL for the worker
-  const blob = new Blob([workerText], { type: "application/javascript" });
+  // Fetch worker dependencies
+  const [workerCode, constCode, errorsCode, utilCode] = await Promise.all([
+    fetch(`${baseURL}/worker.js`).then(r => r.text()),
+    fetch(`${baseURL}/const.js`).then(r => r.text()),
+    fetch(`${baseURL}/errors.js`).then(r => r.text()),
+    fetch(`${baseURL}/util.js`).then(r => r.text()),
+  ]);
+
+  // Create a blob that exports all the modules
+  const inlineCode = `
+    // Const module
+    ${constCode.replace(/export\s+const/g, 'const').replace(/export\s*\{/g, 'const {')};
+
+    // Errors module
+    ${errorsCode.replace(/export\s+const/g, 'const').replace(/export\s*\{/g, 'const {')};
+
+    // Util module
+    ${utilCode.replace(/export\s+const/g, 'const').replace(/export\s*\{/g, 'const {')};
+
+    // Worker code (modified to use local variables)
+    ${workerCode
+      .replace(/import\s+.*from\s+["']\.\/const\.js["'];/g, '')
+      .replace(/import\s+.*from\s+["']\.\/errors\.js["'];/g, '')
+      .replace(/import\s+.*from\s+["']@ffmpeg\/util["'];/g, '')
+    };
+  `;
+
+  const blob = new Blob([inlineCode], { type: "application/javascript" });
   return URL.createObjectURL(blob);
 }
 
@@ -81,12 +107,12 @@ export async function exportVideo(
   const coreURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.js`, "text/javascript");
   const wasmURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.wasm`, "application/wasm");
 
-  // Disable worker to avoid CORS issues - run on main thread
+  // Use inline worker to avoid CORS issues
   await ffmpeg.load({
     coreURL,
     wasmURL,
-    // workerURL: await getInlineWorkerURL(), // Disabled due to CORS
-  }, "blob");
+    workerURL: await getInlineWorkerURL(),
+  });
 
   // Write input file - read as Uint8Array to avoid blob URL issues
   const inputData = await readFileAsUint8Array(videoFile);
@@ -251,12 +277,12 @@ export async function exportVideoWithClips(
   const coreURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.js`, "text/javascript");
   const wasmURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.wasm`, "application/wasm");
 
-  // Disable worker to avoid CORS issues - run on main thread
+  // Use inline worker to avoid CORS issues
   await ffmpeg.load({
     coreURL,
     wasmURL,
-    // workerURL: await getInlineWorkerURL(), // Disabled due to CORS
-  }, "blob");
+    workerURL: await getInlineWorkerURL(),
+  });
 
   // Write input file - read as Uint8Array to avoid blob URL issues
   const inputData = await readFileAsUint8Array(videoFile);
