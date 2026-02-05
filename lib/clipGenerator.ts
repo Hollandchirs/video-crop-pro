@@ -22,8 +22,13 @@ export interface FrameAnalysis {
  * Analyze a single frame and determine the crop strategy
  * Based on AutoCrop-Vertical algorithm:
  * - If single speaker or speakers are close together: TRACK (focus on speaker)
- * - If multiple speakers are far apart: LETTERBOX (show full frame)
- * 
+ * - If multiple speakers are far apart AND both speaking: LETTERBOX (show full frame)
+ *
+ * LETTERBOX is now restricted to:
+ * - Exactly 2 faces detected (dense dialogue scene)
+ * - Faces are spread too wide to fit in crop
+ * - Both faces are reasonably sized (not tiny background faces)
+ *
  * @param faces Detected faces in the frame
  * @param speakingFaceIndex Index of the currently speaking face (or null)
  * @param videoWidth Source video width
@@ -50,7 +55,7 @@ export function analyzeFrameStrategy(
     };
   }
 
-  // Single face - track it
+  // Single face - always track it
   if (faces.length === 1) {
     const face = faces[0];
     return {
@@ -65,16 +70,30 @@ export function analyzeFrameStrategy(
     };
   }
 
-  // Multiple faces - check if they can fit in the crop region
+  // Multiple faces - prioritize tracking the speaking person
+  // Only consider LETTERBOX for exactly 2 faces in a dialogue scene
   const allFacesBoundingBox = getFacesBoundingBox(faces);
   const faceSpread = allFacesBoundingBox.width;
-  
-  // Calculate the threshold - if faces spread is more than 80% of crop width, use letterbox
-  const spreadThreshold = cropWidth * 0.8;
-  
-  if (faceSpread > spreadThreshold) {
-    // Faces are too spread out - use LETTERBOX strategy
-    // Center the crop on all faces
+
+  // Stricter threshold - only use letterbox if faces really can't fit
+  const spreadThreshold = cropWidth * 0.95;
+
+  // Check if both faces are significant (not tiny background faces)
+  const minFaceSize = Math.min(videoWidth, videoHeight) * 0.08; // At least 8% of frame
+  const significantFaces = faces.filter(f =>
+    f.boundingBox.width >= minFaceSize && f.boundingBox.height >= minFaceSize
+  );
+
+  // LETTERBOX only when:
+  // 1. Exactly 2 significant faces (dialogue scene)
+  // 2. Faces are too spread to fit in crop
+  // 3. No clear speaking person to focus on, OR both are significant
+  const shouldUseLetterbox =
+    significantFaces.length === 2 &&
+    faceSpread > spreadThreshold &&
+    speakingFaceIndex === null; // Only letterbox when can't determine speaker
+
+  if (shouldUseLetterbox) {
     return {
       strategy: "LETTERBOX",
       cropPosition: {
@@ -90,12 +109,17 @@ export function analyzeFrameStrategy(
     };
   }
 
-  // Faces are close together - track the speaking person or best face
-  const targetFace = speakingFaceIndex !== null 
-    ? faces[speakingFaceIndex] 
-    : faces.reduce((best, current) => 
-        current.confidence > best.confidence ? current : best
-      );
+  // Default: Track the speaking person or the most prominent face
+  const targetFace = speakingFaceIndex !== null
+    ? faces[speakingFaceIndex]
+    : (significantFaces.length > 0
+        ? significantFaces.reduce((best, current) =>
+            current.boundingBox.width * current.boundingBox.height >
+            best.boundingBox.width * best.boundingBox.height ? current : best
+          )
+        : faces.reduce((best, current) =>
+            current.confidence > best.confidence ? current : best
+          ));
 
   return {
     strategy: "TRACK",

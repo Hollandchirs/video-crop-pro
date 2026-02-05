@@ -127,13 +127,15 @@ async function detectBlackBarsInFrame(
   );
   const data = imageData.data;
 
-  // Black threshold (very dark pixels)
-  const blackThreshold = 30;
+  // Black threshold - more aggressive to catch dark grays too
+  const blackThreshold = 40;
+  // Percentage of pixels that need to be black to consider the row/column black
+  const blackRatioThreshold = 0.85;
 
   // Detect top black bar (within analysis area)
   let top = 0;
   for (let y = 0; y < analysisArea.height / 2; y++) {
-    const rowIsBlack = isRowBlackInArea(data, y, analysisArea.width, blackThreshold);
+    const rowIsBlack = isRowBlackInArea(data, y, analysisArea.width, blackThreshold, blackRatioThreshold);
     if (!rowIsBlack) break;
     top++;
   }
@@ -141,7 +143,7 @@ async function detectBlackBarsInFrame(
   // Detect bottom black bar (within analysis area)
   let bottom = 0;
   for (let y = analysisArea.height - 1; y >= analysisArea.height / 2; y--) {
-    const rowIsBlack = isRowBlackInArea(data, y, analysisArea.width, blackThreshold);
+    const rowIsBlack = isRowBlackInArea(data, y, analysisArea.width, blackThreshold, blackRatioThreshold);
     if (!rowIsBlack) break;
     bottom++;
   }
@@ -149,7 +151,7 @@ async function detectBlackBarsInFrame(
   // Detect left black bar (within analysis area)
   let left = 0;
   for (let x = 0; x < analysisArea.width / 2; x++) {
-    const colIsBlack = isColumnBlackInArea(data, x, analysisArea.height, analysisArea.width, blackThreshold);
+    const colIsBlack = isColumnBlackInArea(data, x, analysisArea.height, analysisArea.width, blackThreshold, blackRatioThreshold);
     if (!colIsBlack) break;
     left++;
   }
@@ -157,67 +159,79 @@ async function detectBlackBarsInFrame(
   // Detect right black bar (within analysis area)
   let right = 0;
   for (let x = analysisArea.width - 1; x >= analysisArea.width / 2; x--) {
-    const colIsBlack = isColumnBlackInArea(data, x, analysisArea.height, analysisArea.width, blackThreshold);
+    const colIsBlack = isColumnBlackInArea(data, x, analysisArea.height, analysisArea.width, blackThreshold, blackRatioThreshold);
     if (!colIsBlack) break;
     right++;
   }
 
-  // Only consider bars larger than 3 pixels (ignore edge noise, was 5)
+  // Only consider bars larger than 3 pixels (ignore edge noise)
   const minBarSize = 3;
-  top = top >= minBarSize ? top : 0;
-  bottom = bottom >= minBarSize ? bottom : 0;
-  left = left >= minBarSize ? left : 0;
-  right = right >= minBarSize ? right : 0;
+  // Add safety margin to ensure complete black bar removal (2% extra)
+  const safetyMargin = Math.max(5, Math.floor(Math.max(analysisArea.width, analysisArea.height) * 0.01));
+
+  top = top >= minBarSize ? top + safetyMargin : 0;
+  bottom = bottom >= minBarSize ? bottom + safetyMargin : 0;
+  left = left >= minBarSize ? left + safetyMargin : 0;
+  right = right >= minBarSize ? right + safetyMargin : 0;
 
   return { top, bottom, left, right };
 }
 
 /**
  * Check if a row is mostly black (within analysis area)
+ * Samples across the entire row for more accurate detection
  */
 function isRowBlackInArea(
   data: Uint8ClampedArray,
   y: number,
   width: number,
-  threshold: number
+  threshold: number,
+  blackRatioThreshold: number = 0.85
 ): boolean {
   let blackPixels = 0;
-  const checkWidth = Math.min(width, 100); // Check at most 100 pixels per row
+  // Sample more pixels across the row for better accuracy
+  const sampleStep = Math.max(1, Math.floor(width / 200));
+  let sampledCount = 0;
 
-  for (let x = 0; x < checkWidth; x++) {
+  for (let x = 0; x < width; x += sampleStep) {
     const idx = (y * width + x) * 4;
     const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
     if (brightness < threshold) {
       blackPixels++;
     }
+    sampledCount++;
   }
 
-  // Consider row black if at least 90% of pixels are black
-  return blackPixels / checkWidth > 0.9;
+  return blackPixels / sampledCount >= blackRatioThreshold;
 }
 
 /**
  * Check if a column is mostly black (within analysis area)
+ * Samples across the entire column for more accurate detection
  */
 function isColumnBlackInArea(
   data: Uint8ClampedArray,
   x: number,
   height: number,
   width: number,
-  threshold: number
+  threshold: number,
+  blackRatioThreshold: number = 0.85
 ): boolean {
   let blackPixels = 0;
-  const checkHeight = Math.min(height, 100);
+  // Sample more pixels across the column for better accuracy
+  const sampleStep = Math.max(1, Math.floor(height / 200));
+  let sampledCount = 0;
 
-  for (let y = 0; y < checkHeight; y++) {
+  for (let y = 0; y < height; y += sampleStep) {
     const idx = (y * width + x) * 4;
     const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
     if (brightness < threshold) {
       blackPixels++;
     }
+    sampledCount++;
   }
 
-  return blackPixels / checkHeight > 0.9;
+  return blackPixels / sampledCount >= blackRatioThreshold;
 }
 
 /**

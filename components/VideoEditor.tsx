@@ -264,6 +264,8 @@ export function VideoEditor() {
 
     // Center Crop mode: black bar detection + center crop, always 1 clip
     if (strategy === "center-crop") {
+      const abortController = new AbortController();
+      setAnalysisAbortController(abortController);
       setIsAnalyzing(true);
       setCurrentAnalyzingRatio(projectKey);
       setAnalysisProgress(0);
@@ -271,6 +273,18 @@ export function VideoEditor() {
 
       try {
         const blackBarResult = await runBlackBarDetection();
+
+        // Check if aborted
+        if (abortController.signal.aborted) {
+          if (analysisPendingRef.current) {
+            const pendingRatio = analysisPendingRef.current;
+            const pendingStrategy = cropStrategy;
+            analysisPendingRef.current = null;
+            setTimeout(() => triggerAnalysis(pendingRatio, pendingStrategy), 50);
+          }
+          return;
+        }
+
         const currentSafeArea = blackBarResult?.safeArea || {
           x: 0, y: 0, width: videoFile.width, height: videoFile.height
         };
@@ -305,6 +319,7 @@ export function VideoEditor() {
       } finally {
         setIsAnalyzing(false);
         setCurrentAnalyzingRatio(null);
+        setAnalysisAbortController(null);
         setAnalysisProgress(1);
 
         // Handle pending analysis after completion
@@ -321,6 +336,8 @@ export function VideoEditor() {
     // Smart Crop mode
     // 16:9 - only black bar detection, no subject analysis (regardless of source)
     if (ratio === "16:9") {
+      const abortController = new AbortController();
+      setAnalysisAbortController(abortController);
       setIsAnalyzing(true);
       setCurrentAnalyzingRatio(projectKey);
       setAnalysisProgress(0);
@@ -328,6 +345,18 @@ export function VideoEditor() {
 
       try {
         const blackBarResult = await runBlackBarDetection();
+
+        // Check if aborted
+        if (abortController.signal.aborted) {
+          if (analysisPendingRef.current) {
+            const pendingRatio = analysisPendingRef.current;
+            const pendingStrategy = cropStrategy;
+            analysisPendingRef.current = null;
+            setTimeout(() => triggerAnalysis(pendingRatio, pendingStrategy), 50);
+          }
+          return;
+        }
+
         const currentSafeArea = blackBarResult?.safeArea || {
           x: 0, y: 0, width: videoFile.width, height: videoFile.height
         };
@@ -354,6 +383,7 @@ export function VideoEditor() {
       } finally {
         setIsAnalyzing(false);
         setCurrentAnalyzingRatio(null);
+        setAnalysisAbortController(null);
         setAnalysisProgress(1);
 
         // Handle pending analysis after completion
@@ -499,22 +529,34 @@ export function VideoEditor() {
         }
         ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
       } else {
-        // Apply scale for zoom effect - draw a larger area from the source video
+        // Ensure crop position stays within valid bounds to prevent blank areas
+        const maxX = Math.max(0, videoFile.width - cropRegion.width);
+        const maxY = Math.max(0, videoFile.height - cropRegion.height);
+        const safeX = Math.max(0, Math.min(currentCropPos.x, maxX));
+        const safeY = Math.max(0, Math.min(currentCropPos.y, maxY));
+
+        // Apply scale for zoom effect
         if (currentScale !== 1.0) {
           const scaledWidth = cropRegion.width / currentScale;
           const scaledHeight = cropRegion.height / currentScale;
           const offsetX = (cropRegion.width - scaledWidth) / 2;
           const offsetY = (cropRegion.height - scaledHeight) / 2;
-          // Draw from the video centered on the crop position but scaled
           ctx.drawImage(
             video,
-            currentCropPos.x + offsetX, currentCropPos.y + offsetY,
+            safeX + offsetX, safeY + offsetY,
             scaledWidth, scaledHeight,
             0, 0,
             cropRegion.width, cropRegion.height
           );
         } else {
-          ctx.drawImage(video, -currentCropPos.x, -currentCropPos.y, videoFile.width, videoFile.height);
+          // Use drawImage with source and destination to ensure canvas is always filled
+          ctx.drawImage(
+            video,
+            safeX, safeY,                    // Source position
+            cropRegion.width, cropRegion.height,  // Source size
+            0, 0,                            // Destination position
+            cropRegion.width, cropRegion.height   // Destination size
+          );
         }
       }
       ctx.strokeStyle = "rgba(194, 241, 89, 0.7)";
@@ -626,8 +668,19 @@ export function VideoEditor() {
     const rect = canvasRef.current!.getBoundingClientRect();
     const currentX = (e.clientX - rect.left) * cropRegion.width / rect.width;
     const currentY = (e.clientY - rect.top) * cropRegion.height / rect.height;
-    const newX = Math.max(0, Math.min(cropPosition.x + currentX - dragStart.x, videoFile.width - cropRegion.width));
-    const newY = Math.max(0, Math.min(cropPosition.y + currentY - dragStart.y, videoFile.height - cropRegion.height));
+
+    // Use safeArea boundaries if available to prevent exposing black bars
+    const minX = safeArea ? safeArea.x : 0;
+    const minY = safeArea ? safeArea.y : 0;
+    const maxX = safeArea
+      ? Math.max(minX, safeArea.x + safeArea.width - cropRegion.width)
+      : videoFile.width - cropRegion.width;
+    const maxY = safeArea
+      ? Math.max(minY, safeArea.y + safeArea.height - cropRegion.height)
+      : videoFile.height - cropRegion.height;
+
+    const newX = Math.max(minX, Math.min(cropPosition.x + currentX - dragStart.x, maxX));
+    const newY = Math.max(minY, Math.min(cropPosition.y + currentY - dragStart.y, maxY));
 
     // Update selected clip's cropPosition
     setGeneratedClips(prev => prev.map(clip =>
@@ -718,18 +771,28 @@ export function VideoEditor() {
       const currentX = (touch.clientX - rect.left) * cropRegion.width / rect.width;
       const currentY = (touch.clientY - rect.top) * cropRegion.height / rect.height;
 
+      // Use safeArea boundaries if available to prevent exposing black bars
+      const baseMinX = safeArea ? safeArea.x : 0;
+      const baseMinY = safeArea ? safeArea.y : 0;
+      const baseMaxX = safeArea
+        ? Math.max(baseMinX, safeArea.x + safeArea.width - cropRegion.width)
+        : videoFile.width - cropRegion.width;
+      const baseMaxY = safeArea
+        ? Math.max(baseMinY, safeArea.y + safeArea.height - cropRegion.height)
+        : videoFile.height - cropRegion.height;
+
       const clipScale = currentClip.cropScale || 1.0;
-      // When zoomed in, allow panning beyond the normal boundaries
+      // When zoomed in, allow panning beyond the normal boundaries (but still within safe area)
       const maxOffsetX = (cropRegion.width * (clipScale - 1)) / 2;
       const maxOffsetY = (cropRegion.height * (clipScale - 1)) / 2;
 
-      const newX = Math.max(-maxOffsetX, Math.min(
+      const newX = Math.max(baseMinX - maxOffsetX, Math.min(
         currentClip.cropPosition.x + (currentX - dragStart.x),
-        videoFile.width - cropRegion.width + maxOffsetX
+        baseMaxX + maxOffsetX
       ));
-      const newY = Math.max(-maxOffsetY, Math.min(
+      const newY = Math.max(baseMinY - maxOffsetY, Math.min(
         currentClip.cropPosition.y + (currentY - dragStart.y),
-        videoFile.height - cropRegion.height + maxOffsetY
+        baseMaxY + maxOffsetY
       ));
 
       setGeneratedClips(prev => prev.map(clip =>
@@ -767,15 +830,25 @@ export function VideoEditor() {
 
     e.preventDefault();
 
+    // Use safeArea boundaries if available to prevent exposing black bars
+    const minX = safeArea ? safeArea.x : 0;
+    const minY = safeArea ? safeArea.y : 0;
+    const maxX = safeArea
+      ? Math.max(minX, safeArea.x + safeArea.width - cropRegion.width)
+      : videoFile.width - cropRegion.width;
+    const maxY = safeArea
+      ? Math.max(minY, safeArea.y + safeArea.height - cropRegion.height)
+      : videoFile.height - cropRegion.height;
+
     // Support both vertical (deltaY) and horizontal (deltaX) scrolling
     const panStep = 20;
-    const newX = Math.max(0, Math.min(
+    const newX = Math.max(minX, Math.min(
       currentClip.cropPosition.x + (e.deltaX > 0 ? panStep : e.deltaX < 0 ? -panStep : 0),
-      videoFile.width - cropRegion.width
+      maxX
     ));
-    const newY = Math.max(0, Math.min(
+    const newY = Math.max(minY, Math.min(
       currentClip.cropPosition.y + (e.deltaY > 0 ? panStep : e.deltaY < 0 ? -panStep : 0),
-      videoFile.height - cropRegion.height
+      maxY
     ));
 
     setGeneratedClips(prev => prev.map(clip =>
@@ -784,7 +857,7 @@ export function VideoEditor() {
         : clip
     ));
     setCropPosition({ x: newX, y: newY });
-  }, [selectedClipId, cropRegion, videoFile, generatedClips]);
+  }, [selectedClipId, cropRegion, videoFile, generatedClips, safeArea]);
 
   if (!videoFile) return null;
 
