@@ -60,16 +60,15 @@ export function ExportProgressModal({
               {status === "completed" && "Export Complete!"}
               {status === "error" && "Export Failed"}
             </h2>
-            {status === "completed" && (
-              <button
-                onClick={onClose}
-                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
+            <button
+              onClick={onClose}
+              className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -189,11 +188,30 @@ export function ExportProgressModal({
         </div>
 
         {/* Footer */}
-        {status !== "completed" && (
+        {status === "error" && (
+          <div className="px-6 py-4 bg-neutral-50 dark:bg-neutral-800/50">
+            <button
+              onClick={onClose}
+              className="w-full py-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-300 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        )}
+        {status === "processing" && (
+          <div className="px-6 py-4 bg-neutral-50 dark:bg-neutral-800/50 flex justify-center">
+            <button
+              onClick={onClose}
+              className="text-sm text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+        {status === "uploading" && (
           <div className="px-6 py-4 bg-neutral-50 dark:bg-neutral-800/50">
             <p className="text-xs text-neutral-500 text-center">
-              {status === "processing" && "Please keep this tab open"}
-              {status === "uploading" && "Almost done..."}
+              Almost done... Please wait
             </p>
           </div>
         )}

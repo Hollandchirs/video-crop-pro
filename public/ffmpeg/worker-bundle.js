@@ -5,7 +5,7 @@
 // Inline all dependencies to avoid relative import issues
 
 // const.js content
-const CORE_URL = "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.js";
+const CORE_URL = "";
 const FFMessageType = {
     LOAD: "load",
     EXEC: "exec",
@@ -21,17 +21,17 @@ const ERROR_IMPORT_FAILURE = "Failed to import ffmpeg-core";
 
 // Original worker code with imports replaced
 let ffmpeg;
-const load = async ({ coreURL: _coreURL, wasmURL: _wasmURL, workerURL: _workerURL, }) => {
+const load = async ({ coreURL: _coreURL, wasmURL: _wasmURL, workerURL: _workerURL }) => {
     const first = !ffmpeg;
     try {
         if (!_coreURL)
-            _coreURL = CORE_URL;
+            _coreURL = CORE_URL || "/ffmpeg/ffmpeg-core.js";
         // when web worker type is `classic`.
         importScripts(_coreURL);
     }
     catch {
         if (!_coreURL)
-            _coreURL = CORE_URL.replace('/umd/', '/esm/');
+            _coreURL = CORE_URL || "/ffmpeg/ffmpeg-core.js";
         // when web worker type is `module`.
         self.createFFmpegCore = (await import(
         /* webpackIgnore: true */ /* @vite-ignore */ _coreURL)).default;
