@@ -491,7 +491,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 className={`absolute h-full transition-all rounded overflow-hidden cursor-pointer ${
                   isSelected
                     ? "bg-[#C2F159] ring-2 ring-white ring-offset-1 ring-offset-neutral-900"
-                    : "bg-[#4A4A4A] hover:bg-[#5A5A5A]"
+                    : "bg-white hover:bg-neutral-50 border border-neutral-200"
                 }`}
                 style={{
                   left: `${left}%`,
@@ -509,7 +509,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
               >
                 {/* Clip info - with text truncation */}
                 <div className={`h-full flex flex-col items-center justify-center px-1 overflow-hidden pointer-events-none ${
-                  isSelected ? "text-black" : "text-white"
+                  isSelected ? "text-black" : "text-neutral-800"
                 }`}>
                   <div className="font-medium text-xs truncate w-full text-center">
                     {showFullText ? `Clip ${index + 1}` : `${index + 1}`}

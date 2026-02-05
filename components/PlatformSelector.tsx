@@ -119,15 +119,6 @@ export function PlatformSelector() {
           </button>
         );
       })}
-
-      {selectedPlatforms.length > 0 && (
-        <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
-          <p className="text-xs text-[#7ea41a] dark:text-[#C2F159] text-center font-medium">
-            {selectedPlatforms.length} platform
-            {selectedPlatforms.length > 1 ? "s" : ""} selected
-          </p>
-        </div>
-      )}
     </div>
   );
 }

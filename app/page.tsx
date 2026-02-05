@@ -88,11 +88,11 @@ export default function HomePage() {
         ) : (
           <>
             {/* Editor Layout: Video + Settings Side by Side */}
-            <div className="grid lg:grid-cols-[1fr_450px] gap-4 h-full">
+            <div className="grid lg:grid-cols-[1fr_450px] gap-3 h-full">
               {/* Video Editor Column */}
-              <div className="min-w-0 flex flex-col gap-4 h-full">
+              <div className="min-w-0 flex flex-col gap-3 h-full">
                 {/* Video Info Header */}
-                <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 mb-4">
+                <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800">
                   <div className="flex items-center justify-between px-5 py-4">
                     <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100 truncate">
                       {videoFile?.file.name}
