@@ -48,13 +48,16 @@ function getCDNBase(): string {
 }
 
 /**
- * Get local worker URL (fallback to CDN if local file not available)
+ * Create inline worker blob URL to avoid CORS issues
  */
-function getWorkerURL(): string {
-  // Try to use local worker file first
-  const localWorker = "/ffmpeg/worker.js";
-  // For production, this should work. For dev, we might need CDN fallback.
-  return localWorker;
+async function getInlineWorkerURL(): Promise<string> {
+  // Fetch the worker code from CDN
+  const workerCode = await fetch("https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js");
+  const workerText = await workerCode.text();
+
+  // Create blob URL for the worker
+  const blob = new Blob([workerText], { type: "application/javascript" });
+  return URL.createObjectURL(blob);
 }
 
 /**
@@ -74,11 +77,16 @@ export async function exportVideo(
   // Create a new FFmpeg instance each time
   const ffmpeg = new FFmpeg();
 
+  // Load FFmpeg core files
+  const coreURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.js`, "text/javascript");
+  const wasmURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.wasm`, "application/wasm");
+
+  // Disable worker to avoid CORS issues - run on main thread
   await ffmpeg.load({
-    coreURL: await toBlobURL(`${getCDNBase()}/ffmpeg-core.js`, "text/javascript"),
-    wasmURL: await toBlobURL(`${getCDNBase()}/ffmpeg-core.wasm`, "application/wasm"),
-    workerURL: getWorkerURL(),
-  });
+    coreURL,
+    wasmURL,
+    // workerURL: await getInlineWorkerURL(), // Disabled due to CORS
+  }, "blob");
 
   // Write input file - read as Uint8Array to avoid blob URL issues
   const inputData = await readFileAsUint8Array(videoFile);
@@ -239,11 +247,16 @@ export async function exportVideoWithClips(
   // Create a new FFmpeg instance each time
   const ffmpeg = new FFmpeg();
 
+  // Load FFmpeg core files
+  const coreURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.js`, "text/javascript");
+  const wasmURL = await toBlobURL(`${getCDNBase()}/ffmpeg-core.wasm`, "application/wasm");
+
+  // Disable worker to avoid CORS issues - run on main thread
   await ffmpeg.load({
-    coreURL: await toBlobURL(`${getCDNBase()}/ffmpeg-core.js`, "text/javascript"),
-    wasmURL: await toBlobURL(`${getCDNBase()}/ffmpeg-core.wasm`, "application/wasm"),
-    workerURL: getWorkerURL(),
-  });
+    coreURL,
+    wasmURL,
+    // workerURL: await getInlineWorkerURL(), // Disabled due to CORS
+  }, "blob");
 
   // Write input file - read as Uint8Array to avoid blob URL issues
   const inputData = await readFileAsUint8Array(videoFile);
