@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
+import { createClient } from "@supabase/supabase-js";
+
+// Supabase configuration
+const SUPABASE_URL = "https://zapdbgalevtqvpjmtgyq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_ZkIGtUTz0ZtZigr1eH4Nnw_QBda6ddE";
+
+// Initialize Supabase client
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export const runtime = "edge";
 
@@ -15,16 +22,33 @@ export async function POST(request: NextRequest) {
 
     // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const buffer = new Uint8Array(arrayBuffer);
 
-    // Upload to Vercel Blob Storage
-    const blob = await put(filename, buffer, {
-      access: "public",
-    });
+    // Upload to Supabase Storage
+    // Files are stored in 'videos' bucket
+    const { data, error } = await supabase.storage
+      .from("videos")
+      .upload(filename, buffer, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("Supabase upload error:", error);
+      return NextResponse.json(
+        { error: `Upload failed: ${error.message}` },
+        { status: 500 }
+      );
+    }
+
+    // Get public URL for the uploaded file
+    const { data: { publicUrl } } = supabase.storage
+      .from("videos")
+      .getPublicUrl(filename);
 
     return NextResponse.json({
       success: true,
-      downloadUrl: blob.url,
+      downloadUrl: publicUrl,
       filename,
     });
   } catch (error) {
@@ -36,7 +60,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get export status/check if download is ready
+// Check if file exists in storage
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const filename = searchParams.get("filename");
@@ -45,15 +69,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Filename required" }, { status: 400 });
   }
 
-  // Check if file exists in blob storage
   try {
-    const { head } = await import("@vercel/blob");
-    const blob = await head(filename);
-    return NextResponse.json({
-      exists: true,
-      downloadUrl: blob.url,
-      size: blob.size,
-    });
+    // Check if file exists by trying to get its info
+    const { data } = await supabase.storage
+      .from("videos")
+      .list(filename, { limit: 1 });
+
+    const exists = data && data.length > 0;
+
+    if (exists) {
+      const fileData = data[0];
+      // Construct public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("videos")
+        .getPublicUrl(filename);
+
+      return NextResponse.json({
+        exists: true,
+        downloadUrl: publicUrl,
+        size: fileData.metadata?.size,
+      });
+    }
+
+    return NextResponse.json({ exists: false });
   } catch {
     return NextResponse.json({ exists: false });
   }
