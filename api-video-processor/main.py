@@ -6,6 +6,7 @@ Deploy: Railway (or Render, Fly.io)
 """
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 import uuid
@@ -52,6 +53,14 @@ class JobStatus(BaseModel):
 # ============================================================
 
 app = FastAPI(title="Video Processing Service")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # In-memory job storage (use Redis for production)
 jobs = {}
