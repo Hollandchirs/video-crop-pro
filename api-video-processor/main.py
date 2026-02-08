@@ -14,6 +14,7 @@ import asyncio
 import subprocess
 import tempfile
 import aiohttp
+import requests
 from pathlib import Path
 
 # ============================================================
@@ -62,6 +63,25 @@ TEMP_DIR.mkdir(exist_ok=True)
 # ============================================================
 # HELPER FUNCTIONS
 # ============================================================
+
+VERCEL_BLOB_TOKEN = os.getenv("BLOB_READ_WRITE_TOKEN")
+
+def upload_to_vercel_blob(file_path: str, filename: str) -> str:
+    """Upload file to Vercel Blob Storage and return URL"""
+    url = f"https://blob.vercel-storage.com/{filename}"
+    with open(file_path, 'rb') as f:
+        response = requests.put(
+            url,
+            data=f,
+            headers={
+                "authorization": f"Bearer {VERCEL_BLOB_TOKEN}",
+                "x-api-version": "3",
+                "content-type": "video/mp4",
+            }
+        )
+    if response.status_code not in (200, 201):
+        raise Exception(f"Failed to upload to Vercel Blob: {response.text}")
+    return response.json()['url']
 
 async def download_video(url: str, dest_path: Path) -> None:
     """Download video from URL to local file"""
@@ -214,15 +234,9 @@ async def process_video_job(job_id: str, request: ExportRequest) -> None:
 
         jobs[job_id].progress = 90
 
-        # Upload to Vercel Blob (or return file content)
-        # For simplicity, we'll return the file content directly
-        # In production, you'd upload to blob storage
-
-        with open(output_path, 'rb') as f:
-            output_data = f.read()
-
-        # Store output data (in production, this would be a blob URL)
-        jobs[job_id].outputData = output_data
+        # Upload to Vercel Blob
+        output_url = upload_to_vercel_blob(str(output_path), f"{job_id}_output.mp4")
+        jobs[job_id].outputUrl = output_url
         jobs[job_id].status = "completed"
         jobs[job_id].progress = 100
 
@@ -263,7 +277,7 @@ async def get_job_status(job_id: str):
 
     job = jobs[job_id]
 
-    # Return output data if completed (simplified)
+    # Return output data if completed
     response = {
         "jobId": job.jobId,
         "status": job.status,
@@ -271,30 +285,24 @@ async def get_job_status(job_id: str):
         "error": job.error
     }
 
-    if job.status == "completed" and hasattr(job, 'outputData'):
-        # In production, return a blob URL instead
-        import base64
-        response["outputData"] = base64.b64encode(job.outputData).decode()
+    if job.status == "completed" and hasattr(job, 'outputUrl'):
+        response["outputUrl"] = job.outputUrl
 
     return response
 
 @app.get("/download/{job_id}")
 async def download_result(job_id: str):
-    """Download processed video"""
+    """Download processed video (redirects to Vercel Blob URL)"""
     if job_id not in jobs:
         raise HTTPException(status_code=404, detail="Job not found")
 
     job = jobs[job_id]
 
-    if job.status != "completed" or not hasattr(job, 'outputData'):
+    if job.status != "completed" or not hasattr(job, 'outputUrl'):
         raise HTTPException(status_code=400, detail="Job not completed")
 
-    from fastapi.responses import Response
-    return Response(
-        content=job.outputData,
-        media_type="video/mp4",
-        headers={"Content-Disposition": "attachment; filename=output.mp4"}
-    )
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=job.outputUrl, status_code=302)
 
 @app.get("/health")
 async def health():
@@ -307,4 +315,5 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=3001)
+    port = int(os.getenv("PORT", "3001"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
