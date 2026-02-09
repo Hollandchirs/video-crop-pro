@@ -24,4 +24,64 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+
+  .hero-bg {
+    background: transparent;
+  }
+
+  .upload-zone {
+    background: hsl(220 20% 99%);
+    border: 2px dashed hsl(220 15% 85%);
+  }
+
+  .upload-zone:hover {
+    border-color: #C2F159;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .hero-bg {
+      background: transparent;
+    }
+
+    .upload-zone {
+      background: transparent;
+      border-color: hsl(0 0% 20%);
+    }
+  }
 }
+
+/* Animation keyframes */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s ease-out forwards;
+}
+
+.animation-delay-100 { animation-delay: 100ms; }
+.animation-delay-200 { animation-delay: 200ms; }
+.animation-delay-300 { animation-delay: 300ms; }
+.animation-delay-400 { animation-delay: 400ms; }

@@ -6,6 +6,12 @@ import { PlatformSelector } from "@/components/PlatformSelector";
 import { CropStrategySelector } from "@/components/CropStrategySelector";
 import { VideoEditor } from "@/components/VideoEditor";
 import { ExportProgressModal } from "@/components/ExportProgressModal";
+import { PlatformShowcase } from "@/components/PlatformShowcase";
+import { HowItWorksSection } from "@/components/HowItWorksSection";
+import { FeaturesSection } from "@/components/FeaturesSection";
+import { TrustSection } from "@/components/TrustSection";
+import { FAQSection } from "@/components/FAQSection";
+import { Footer } from "@/components/Footer";
 import { useVideoStore } from "@/lib/store";
 import { getPlatformById } from "@/lib/platforms";
 
@@ -126,15 +132,54 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#f7f7f8] to-[#eef0f2] dark:from-[#1f1f1f] dark:to-[#2a2a2a]">
       {/* Header */}
-      <header className="border-b border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-neutral-200/50 dark:border-neutral-800/50 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
+            {/* Logo */}
             <button
               onClick={handleReset}
-              className="text-xl font-bold bg-gradient-to-r from-[#C2F159] to-[#A7E635] bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             >
-              Video Crop Pro
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#C2F159]">
+                <svg className="h-5 w-5 text-neutral-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+                  <line x1="7" y1="2" x2="7" y2="22" />
+                  <line x1="17" y1="2" x2="17" y2="22" />
+                  <line x1="2" y1="12" x2="22" y2="12" />
+                  <line x1="2" y1="7" x2="7" y2="7" />
+                  <line x1="2" y1="17" x2="7" y2="17" />
+                  <line x1="17" y1="17" x2="22" y2="17" />
+                  <line x1="17" y1="7" x2="22" y2="7" />
+                </svg>
+              </div>
+              <span className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                VideoCrop<span className="text-[#C2F159]">.pro</span>
+              </span>
             </button>
+
+            {/* Center Navigation */}
+            <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+              <a
+                href="#how-it-works"
+                className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+              >
+                How It Works
+              </a>
+              <a
+                href="#features"
+                className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+              >
+                Features
+              </a>
+              <a
+                href="#faq"
+                className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+              >
+                FAQ
+              </a>
+            </nav>
+
+            {/* Right Button */}
             {showEditor ? (
               <button
                 onClick={handleExport}
@@ -148,54 +193,92 @@ export default function HomePage() {
                 {isExporting ? "Exporting..." : "Export"}
               </button>
             ) : (
-              <div className="flex items-center gap-4">
-                <a
-                  href="#features"
-                  className="text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
-                >
-                  Feature
-                </a>
-                <a
-                  href="#faq"
-                  className="text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
-                >
-                  FAQ
-                </a>
-              </div>
+              <button
+                onClick={() => {
+                  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+                  input?.click();
+                }}
+                className="inline-flex items-center gap-2 rounded-full bg-[#C2F159] px-4 py-1.5 text-sm font-semibold text-neutral-900 shadow-md transition-all hover:shadow-lg hover:opacity-90"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" x2="12" y1="3" y2="15" />
+                </svg>
+                Upload Video
+              </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Hero Section - Only show when no video */}
-      {!showEditor && (
-        <section className="max-w-4xl mx-auto px-4 pt-16 pb-8 text-center">
-          <h2 className="text-4xl sm:text-5xl font-bold text-neutral-900 dark:text-neutral-100 mb-4 text-balance">
-            Crop Videos for{" "}
-            <span className="bg-gradient-to-r from-[#C2F159] to-[#A7E635] bg-clip-text text-transparent">
-              Any Platform
-            </span>
-          </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-400 mb-8 text-balance">
-            Free. No watermark. No signup. Smart face detection.
-          </p>
-        </section>
-      )}
+      {/* Landing Page - Only show when no video */}
+      {!showEditor ? (
+        <>
+          {/* Hero Section */}
+          <section className="hero-bg relative overflow-hidden pb-4 pt-12">
+            <div className="max-w-4xl mx-auto px-4">
+              {/* Main Headline */}
+              <div className="text-center">
+                <h1 className="mb-8 text-4xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-5xl lg:text-6xl animate-fade-up animation-delay-100">
+                  Smart Crop for
+                  <span className="text-[#C2F159]"> Short Videos</span>
+                </h1>
+                <p className="mb-6 text-lg text-neutral-600 dark:text-neutral-400 sm:text-xl animate-fade-up animation-delay-200 text-balance leading-loose">
+                  One-click resize for TikTok, Reels, Shorts & all social platforms.
+                  <br className="hidden sm:block" />
+                  <strong className="text-neutral-900 dark:text-neutral-100">AI keeps subjects centered. No stretching. No cropped faces.</strong>
+                </p>
 
-      {/* Main Content */}
-      <section
-        className={`mx-auto ${showEditor
-          ? "max-w-7xl px-4 sm:px-6 lg:px-8 pt-4 pb-6 h-[calc(100vh-5rem)] overflow-hidden"
-          : "max-w-4xl px-4 pb-12"}`}
-      >
-        {!showEditor ? (
-          <>
-            {/* Upload Area Only */}
-            <VideoUploader onVideoLoaded={handleVideoLoaded} />
-          </>
-        ) : (
-          <>
-            {/* Editor Layout: Video + Settings Side by Side */}
+                {/* Trust badges */}
+                <div className="mb-10 flex flex-wrap items-center justify-center gap-3 text-sm animate-fade-up animation-delay-300">
+                  {["Free Forever", "No Watermark", "No Sign-up", "100% Private"].map((badge) => (
+                    <div
+                      key={badge}
+                      className="flex items-center gap-2 rounded-full border border-[#C2F159]/20 bg-[#C2F159]/5 px-4 py-2 backdrop-blur-sm transition-all hover:border-[#C2F159]/40 hover:bg-[#C2F159]/10"
+                    >
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#C2F159]/20">
+                        <svg className="h-3 w-3 text-[#C2F159]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-neutral-900 dark:text-neutral-100">{badge}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Upload Area */}
+          <section className="max-w-2xl mx-auto px-4 pb-16">
+            <div className="animate-scale-in animation-delay-400">
+              <VideoUploader onVideoLoaded={handleVideoLoaded} />
+            </div>
+          </section>
+
+          {/* Platform Showcase */}
+          <PlatformShowcase />
+
+          {/* How It Works Section */}
+          <HowItWorksSection />
+
+          {/* Features Section */}
+          <FeaturesSection />
+
+          {/* Trust Section */}
+          <TrustSection />
+
+          {/* FAQ Section */}
+          <FAQSection />
+
+          {/* Footer */}
+          <Footer />
+        </>
+      ) : (
+        <>
+          {/* Editor Layout: Video + Settings Side by Side */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-6 h-[calc(100vh-5rem)] overflow-hidden">
             <div className="grid lg:grid-cols-[1fr_450px] gap-3 h-full">
               {/* Video Editor Column */}
               <div className="min-w-0 flex flex-col gap-3 h-full">
@@ -245,9 +328,9 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          </>
-        )}
-      </section>
+          </section>
+        </>
+      )}
 
       {/* Export Progress Modal */}
       <ExportProgressModal
@@ -274,118 +357,6 @@ export default function HomePage() {
           setIsProcessing(false);
         }}
       />
-
-      {/* Features Section - Hide when editing */}
-      {!showEditor && (
-        <section id="features" className="max-w-6xl mx-auto px-4 py-16">
-          <h3 className="text-2xl font-bold text-center text-neutral-900 dark:text-neutral-100 mb-12">
-            Why Choose Video Crop Pro?
-          </h3>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: "🎯",
-                title: "Smart Face Detection",
-                description:
-                  "AI-powered face tracking keeps subjects perfectly framed in vertical videos",
-              },
-              {
-                icon: "⚡",
-                title: "Lightning Fast",
-                description:
-                  "Browser-based processing means your videos never leave your device",
-              },
-              {
-                icon: "💰",
-                title: "100% Free",
-                description: "No watermark, no signup, no hidden fees. Unlimited exports",
-              },
-              {
-                icon: "📱",
-                title: "All Platforms",
-                description:
-                  "One video, perfectly cropped for TikTok, Instagram, YouTube, and more",
-              },
-              {
-                icon: "🔒",
-                title: "Privacy First",
-                description: "All processing happens locally in your browser",
-              },
-              {
-                icon: "✨",
-                title: "No Quality Loss",
-                description: "Export in full HD quality with no compression artifacts",
-              },
-            ].map((feature, i) => (
-              <div
-                key={i}
-                className="p-6 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
-              >
-                <div className="text-3xl mb-3">{feature.icon}</div>
-                <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
-                  {feature.title}
-                </h4>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* FAQ Section - Hide when editing */}
-      {!showEditor && (
-        <section id="faq" className="max-w-3xl mx-auto px-4 py-16">
-          <h3 className="text-2xl font-bold text-center text-neutral-900 dark:text-neutral-100 mb-8">
-            Frequently Asked Questions
-          </h3>
-          <div className="space-y-4">
-            {[
-              {
-                q: "Is Video Crop Pro really free?",
-                a: "Yes! No hidden fees, no watermarks, no signup required. All features are completely free.",
-              },
-              {
-                q: "What video formats are supported?",
-                a: "We support MP4, MOV, WebM, and most common video formats. Videos up to 1GB.",
-              },
-              {
-                q: "Do you upload my videos?",
-                a: "No. All processing happens in your browser using WebAssembly. Your videos never leave your device.",
-              },
-              {
-                q: "Can I crop multiple videos at once?",
-                a: "Currently we process one video at a time, but you can export to multiple platforms simultaneously.",
-              },
-            ].map((faq, i) => (
-              <details
-                key={i}
-                className="group bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800"
-              >
-                <summary className="cursor-pointer p-4 font-medium text-neutral-900 dark:text-neutral-100 flex justify-between items-center">
-                  {faq.q}
-                  <span className="text-neutral-400 group-open:rotate-180 transition-transform">
-                    ▼
-                  </span>
-                </summary>
-                <p className="px-4 pb-4 text-sm text-neutral-600 dark:text-neutral-400">
-                  {faq.a}
-                </p>
-              </details>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Footer */}
-      {!showEditor && (
-        <footer className="border-t border-neutral-200 dark:border-neutral-800 py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center text-sm text-neutral-600 dark:text-neutral-400">
-            <p>© 2026 Video Crop Pro. Free forever. No tracking. No cookies.</p>
-          </div>
-        </footer>
-      )}
     </main>
   );
 }
