@@ -236,8 +236,8 @@ export function VideoEditor() {
     };
   }, []);
 
-  const triggerAnalysis = useCallback(async (ratio: string, strategy: string = cropStrategy) => {
-    if (!videoFile || !cropRegion) return;
+  const triggerAnalysis = useCallback(async (ratio: string, strategy: string = cropStrategy, cropRegionOverride?: { width: number; height: number; x: number; y: number }) => {
+    if (!videoFile) return;
 
     const projectKey = `${ratio}-${strategy}`;
 
@@ -484,6 +484,9 @@ export function VideoEditor() {
     setCropRegion,
   ]);
 
+  // Track if we've triggered analysis for the current ratio/strategy combo
+  const triggeredAnalysisRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (videoFile && targetPlatform) {
       // Use safeArea dimensions if available (after black bar detection), otherwise use original video size
@@ -509,15 +512,18 @@ export function VideoEditor() {
       const newRatio = targetPlatform.aspectRatio;
       const ratioChanged = previousRatioRef.current !== newRatio;
       const strategyChanged = previousStrategyRef.current !== cropStrategy;
+      const projectKey = `${newRatio}-${cropStrategy}`;
 
-      if (ratioChanged || strategyChanged) {
+      // Trigger analysis if ratio/strategy changed AND we haven't already triggered for this combo
+      if ((ratioChanged || strategyChanged) && triggeredAnalysisRef.current !== projectKey) {
         previousRatioRef.current = newRatio;
         previousStrategyRef.current = cropStrategy;
+        triggeredAnalysisRef.current = projectKey;
         // Trigger immediately without delay for faster response
         triggerAnalysis(newRatio, cropStrategy);
       }
     }
-  }, [videoFile, targetPlatform, cropStrategy, setCropRegion, cropRegion, triggerAnalysis, safeArea]);
+  }, [videoFile, targetPlatform, cropStrategy, setCropRegion, cropRegion, safeArea]);
 
   const prevCropPositionRef = useRef(cropPosition);
   useEffect(() => {
@@ -975,7 +981,7 @@ export function VideoEditor() {
         {/* Platform Badge */}
         {targetPlatform && (
           <div className="absolute top-4 right-4 px-3 py-1 bg-black/70 text-white text-sm rounded-full">
-            {targetPlatform.icon} {targetPlatform.aspectRatio}
+            {targetPlatform.aspectRatio}
           </div>
         )}
 

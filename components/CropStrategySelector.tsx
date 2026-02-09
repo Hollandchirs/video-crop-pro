@@ -49,7 +49,6 @@ export function CropStrategySelector() {
                   : "border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-neutral-300 dark:hover:border-neutral-700"
               }`}
             >
-              <div className="text-xl">{strategy.icon}</div>
               <div className="w-full">
                 <div
                   className={`text-xs font-medium ${
